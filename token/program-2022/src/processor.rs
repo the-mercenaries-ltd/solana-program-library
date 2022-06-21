@@ -26,6 +26,7 @@ use {
         clock::Clock,
         decode_error::DecodeError,
         entrypoint::ProgramResult,
+        native_token::LAMPORTS_PER_SOL,
         msg,
         program::{invoke, invoke_signed, set_return_data},
         program_error::{PrintProgramError, ProgramError},
@@ -1167,6 +1168,11 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [WithdrawExcessSOL]() instruction
+    pub fn process_withdraw_excess_sol(accounts: &[AccountInfo]) -> ProgramResult {
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1326,6 +1332,10 @@ impl Processor {
                     accounts,
                     &input[1..],
                 )
+            }
+            TokenInstruction::WithdrawExcessSOL => {
+                msg!("Instruction: WithdrawExcessSOL");
+                Self::process_withdraw_excess_sol(accounts)
             }
         }
     }
@@ -7417,4 +7427,30 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_withdraw_excess_sol() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account = SolanaAccount::new(mint_minimum_balance() + LAMPORTS_PER_SOL, Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+        
+        // withdraw excess SOL
+        do_process_instruction(
+            withdraw_excess_sol(&program_id, &mint_key).unwrap(),
+            vec![],
+        )
+        .unwrap();
+
+        assert_eq!(mint_account.lamports, mint_minimum_balance());
+    }
+
 }

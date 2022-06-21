@@ -589,6 +589,8 @@ pub enum TokenInstruction<'a> {
     /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     InterestBearingMintExtension,
+    /// Withdraws excess SOL from the mint account that was mistakenly sent there.
+    WithdrawExcessSOL,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -719,6 +721,7 @@ impl<'a> TokenInstruction<'a> {
             31 => Self::CreateNativeMint,
             32 => Self::InitializeNonTransferableMint,
             33 => Self::InterestBearingMintExtension,
+            34 => Self::WithdrawExcessSOL,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -870,6 +873,9 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::InterestBearingMintExtension => {
                 buf.push(33);
+            }
+            &Self::WithdrawExcessSOL => {
+                buf.push(34);
             }
         };
         buf
@@ -1724,6 +1730,19 @@ pub fn initialize_non_transferable_mint(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*mint_pubkey, false)],
         data: TokenInstruction::InitializeNonTransferableMint.pack(),
+    })
+}
+
+/// Creates an `WithdrawExcessSOL` instruction
+pub fn withdraw_excess_sol(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::WithdrawExcessSOL.pack(),
     })
 }
 
